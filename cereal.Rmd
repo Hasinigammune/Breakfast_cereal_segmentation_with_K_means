@@ -1,0 +1,158 @@
+---
+title: "**Clustering for Cereal dataset**"
+output: pdf_document
+header-includes: 
+  - \usepackage{float}
+  - \floatplacement{figure}{H}
+  - \usepackage{bm}
+  - \usepackage{longtable}
+  - \usepackage{booktabs}
+  - \usepackage{caption}
+  - \captionsetup[figure]{font=scriptsize}
+  - \captionsetup[table]{font=scriptsize}
+vignette: >
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteIndexEntry{Foo}
+urlcolor: blue
+geometry: "left=1cm,right=1cm,top=1cm,bottom=0.8cm"
+always_allow_html: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(xtable.comment=FALSE)
+```
+
+ The Breakfast cereal data set (https://www.kaggle.com/code/jeandsantos/breakfast-cereals-data-analysis-and-clustering) contains information about a variety of breakfast cereal brands and their attributes. The data set aims to provide insights into the characteristics of different cereal brands. In this project, we try to cluster various types of breakfast cereal  based on their nutritional content. 
+
+```{r echo=FALSE}
+cereal_data =  read.csv("cereal.csv")
+cereal= cereal_data[,-c(1,2,3,12,13,14,15,16)]
+#str(cereal)
+attach(cereal)
+```
+
+- Summary Statistics
+
+```{r echo=FALSE,results='asis'}
+library(xtable)
+xtable(summary(cereal[,1:4]),caption = "Summary Statistics",digits = 2)
+xtable(summary(cereal[,5:8]),caption = "Summary Statistics",digits = 2)
+```
+
+- Matrix scatterplot and Correlation matrix
+
+
+```{r echo=FALSE,warning=FALSE,message=FALSE,fig.align="center",out.width = "70%",fig.cap="Matrix scatterplot"}
+library(PerformanceAnalytics)
+chart.Correlation(cereal, histogram = TRUE,)
+``` 
+
+```{r echo=FALSE,results='asis'}
+xtable(cor(cereal), caption = "Correlation matrix")
+``` 
+
+\newpage
+- As the correlation between most of the variables are very low, therefore, rather than going with the correlation-based distance, we can use matric-based distance for clustering.
+- Also I would suggest standardizing the variables as they are in different scales and some have very high ranges.
+- The panel histograms shows that the distributions of some of the variables are highly  right skewed. 
+
+**Hierarchical Clustering with Complete linkage**
+
+```{r, echo=FALSE,fig.align="center",out.width="60%",fig.cap="Hierarchical Clustering with Complete linkage"}
+cereal.sc <- scale(cereal)
+cereal.complete <- hclust(dist(cereal.sc), method = "complete")
+plot(cereal.complete, xlab = "", sub = "", 
+	cex = 0.7)
+abline(h=7.3,col="red")##cut the tree
+```
+```{r, echo=FALSE, results='asis'}
+clust<-cutree(cereal.complete, 3)
+t<-table(clust)
+xtable(t(t), caption = "Number of observations within each cluster (Hierarchical Clustering)")
+cereal.new<-cbind(cereal,clust)
+c1<-apply(cereal[clust==1,],2,mean)
+c2<-apply(cereal[clust==2,],2,mean)
+c3<-apply(cereal[clust==3,],2,mean)
+d<-as.data.frame(rbind(c1,c2,c3))
+row.names(d)<-c("Cluster 1","Cluster 2","Cluster 3")
+xtable(d,caption = "Cluster means of the variables (Hierarchical Clustering)",table.placement="H",digits = 3)
+```
+
+```{r,echo=FALSE,fig.align="center",warning=FALSE,fig.cap="Matrix scatter plots"}
+# Plot data
+plot(cereal,upper.panel=NULL,cex.main=0.8,col = c("red","blue","green")[cereal.new$clust],pch=c(1,1,1)[cereal.new$clust])
+legend("topright", legend=c("Cluster 1", "Cluster 2","Cluster 3"), 
+       col = c("red","blue","green") ,pch=c(1,1,1), cex=0.9)
+
+```
+- We can see that Calories and Sodium are good variables to achieve 3 clusters as there is minimal overlap between the clusters.
+
+
+ **K-means clustering with k = 3**
+
+ 
+
+```{r, echo=FALSE,results='asis'}
+set.seed(100)
+km.out <- kmeans(cereal.sc, 3, nstart = 20)
+t1<-table(km.out$cluster)
+xtable(t(t1), caption = "Number of observations within each cluster (k=3)")
+cereal.new<-cbind(cereal,clust)
+k1<-apply(cereal[km.out$cluster==1,],2,mean)
+k2<-apply(cereal[km.out$cluster==2,],2,mean)
+k3<-apply(cereal[km.out$cluster==3,],2,mean)
+
+d<-as.data.frame(rbind(k1,k2,k3))
+row.names(d)<-c("Cluster 1","Cluster 2","Cluster 3")
+xtable(d,caption = "Cluster means of the variables for k-means clustering (k=3)",table.placement="H",digits = 3)
+kclust<-km.out$cluster
+cereal.new<-cbind(cereal.new,kclust)
+```
+```{r,echo=FALSE,fig.align="center",warning=FALSE,fig.cap="Matrix scatter plots",out.width="80%"}
+# Plot data
+plot(cereal,upper.panel=NULL,cex.main=0.8,col = c("red","blue","green")[cereal.new$kclust],pch=c(1,1,1)[cereal.new$kclust])
+legend("topright", legend=c("Cluster 1","Cluster 2","Cluster 3"), 
+       col = c("red","blue","green") ,pch=c(1,1,1), cex=0.9)
+
+```
+
+- The clusters seems to be overlapping.
+
+
+
+ **K-means clustering with k = 4**
+
+```{r, echo=FALSE,results='asis'}
+set.seed(100)
+km.out <- kmeans(cereal.sc, 4, nstart = 20)
+t1<-table(km.out$cluster)
+xtable(t(t1), caption = "Number of observations within each cluster (k=4)")
+cereal.new<-cbind(cereal,clust)
+k1<-apply(cereal[km.out$cluster==1,],2,mean)
+k2<-apply(cereal[km.out$cluster==2,],2,mean)
+k3<-apply(cereal[km.out$cluster==3,],2,mean)
+k4<-apply(cereal[km.out$cluster==4,],2,mean)
+d<-as.data.frame(rbind(k1,k2,k3,k4))
+row.names(d)<-c("Cluster 1","Cluster 2","Cluster 3","Cluster 4")
+xtable(d,caption = "Cluster means of the variables for k-means clustering (k=4)",table.placement="H",digits = 3)
+```
+
+```{r,echo=FALSE,fig.align="center",warning=FALSE,fig.cap="Matrix scatter plots"}
+kclust<-km.out$cluster
+cereal.new<-cbind(cereal.new,kclust)
+# Plot data
+plot(cereal,upper.panel=NULL,cex.main=0.8,col = c("red","blue","green","yellow")[cereal.new$kclust],pch=c(1,1,1,1)[cereal.new$kclust])
+legend("topright", legend=c("Cluster 1","Cluster 2","Cluster 3","Cluster 4"), 
+       col = c("red","blue","green","yellow") ,pch=c(1,1,1,1), cex=0.9)
+
+```
+```{r, echo=FALSE, warning=FALSE,message=FALSE,fig.cap="Plot of number of clusters vs total within cluster sum of squares", fig.align='center', out.width="80%"}
+library(factoextra)
+
+#create plot of number of clusters vs total within sum of squares
+fviz_nbclust(cereal, kmeans, method = "wss")
+```
+- The scree plot also shows that the optimal number of clusters is 4.
+
+- If we compare the 2 methods Hierarchical clustering and K-means clustering,  both methods seems to give good results for this data. The classification seems to be difficult due to the presence of some extreme values.
